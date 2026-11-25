@@ -1,0 +1,53 @@
+name: Reusable Plugin Validate
+
+on:
+  workflow_call:
+    inputs:
+      runs-on:
+        type: string
+        default: windows-latest
+      cmake-args:
+        type: string
+        default: ''
+      python-version:
+        type: string
+        default: '3.11'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ${{ inputs.runs-on }}
+    env:
+      PYTHONUTF8: '1'
+      # passed through the environment so tag names and caller inputs are never spliced into a script
+      REF_NAME: ${{ github.ref_name }}
+      CMAKE_ARGS: ${{ inputs.cmake-args }}
+    steps:
+      - name: Checkout plugin repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Checkout plugin tools at the exact workflow commit
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .plugin-tools
+          persist-credentials: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Validate repository
+        run: python .plugin-tools/scripts/validate_plugin.py --repo .
+
+      - name: Build, test and package
+        id: build
+        run: python .plugin-tools/scripts/build_plugin.py --repo . --out "${{ runner.temp }}/dist" "--cmake-args=$env:CMAKE_ARGS"
+
+      - name: Validate package
+        run: python .plugin-tools/scripts/validate_plugin.py --zip "${{ steps.build.outputs.zip }}" --expect-id "${{ steps.build.outputs.id }}"

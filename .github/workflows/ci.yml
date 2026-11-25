@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  self-test:
+    runs-on: windows-latest
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Validate sample plugin
+        run: python scripts/validate_plugin.py --repo tests/sample_plugin_repo
+      - name: Build and package sample plugin
+        id: build
+        run: python scripts/build_plugin.py --repo tests/sample_plugin_repo --out "${{ runner.temp }}/dist" --build-dir "${{ runner.temp }}/build"
+      - name: Validate package
+        run: python scripts/validate_plugin.py --zip "${{ steps.build.outputs.zip }}" --expect-id "${{ steps.build.outputs.id }}"

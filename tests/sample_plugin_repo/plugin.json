@@ -1,0 +1,17 @@
+{
+  "id": "ext.example.game",
+  "displayName": "示例游戏",
+  "abiMajor": 1,
+  "version": "0.1.0",
+  "exeNames": ["Game.exe"],
+  "caps": ["createsProcess"],
+  "license": "MIT",
+  "author": "你的名字",
+  "description": "一句话说明这个插件做什么。",
+  "privacyNote": "不联网。",
+  "settingsSchema": {
+    "fields": [
+      { "key": "windowed", "label": "窗口化启动", "type": "bool", "default": false }
+    ]
+  }
+}

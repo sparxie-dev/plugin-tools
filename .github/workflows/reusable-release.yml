@@ -1,0 +1,101 @@
+name: Reusable Plugin Release
+
+on:
+  workflow_call:
+    inputs:
+      runs-on:
+        type: string
+        default: windows-latest
+      cmake-args:
+        description: '附加给 cmake 配置步骤的参数'
+        type: string
+        default: ''
+      python-version:
+        type: string
+        default: '3.11'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ${{ inputs.runs-on }}
+    permissions:
+      contents: write
+    env:
+      PYTHONUTF8: '1'
+      # passed through the environment so tag names and caller inputs are never spliced into a script
+      REF_NAME: ${{ github.ref_name }}
+      CMAKE_ARGS: ${{ inputs.cmake-args }}
+    steps:
+      - name: Require a tag
+        if: github.ref_type != 'tag'
+        shell: bash
+        run: |
+          echo "::error::Release must be triggered by pushing a v<version> tag."
+          exit 1
+
+      - name: Checkout plugin repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Checkout plugin tools at the exact workflow commit
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: .plugin-tools
+          persist-credentials: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      # 已经发布过的文件不覆盖：module.dll 每次编译哈希都不同，换掉附件会让用户核对过的哈希失效。要改版本号重发。
+      - name: Refuse to overwrite an existing release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::Release $GITHUB_REF_NAME already exists. Bump the version instead of replacing published files."
+            exit 1
+          fi
+
+      - name: Validate repository and tag
+        run: python .plugin-tools/scripts/validate_plugin.py --repo . --expect-tag "$env:REF_NAME"
+
+      - name: Build, test and package
+        id: build
+        run: python .plugin-tools/scripts/build_plugin.py --repo . --out "${{ runner.temp }}/dist" "--cmake-args=$env:CMAKE_ARGS"
+
+      - name: Validate release asset
+        run: python .plugin-tools/scripts/validate_plugin.py --zip "${{ steps.build.outputs.zip }}" --expect-id "${{ steps.build.outputs.id }}" --expect-tag "$env:REF_NAME"
+
+      - name: Write release notes
+        run: python .plugin-tools/scripts/release_notes.py --repo . --dist "${{ runner.temp }}/dist" --tag "$env:REF_NAME"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.id }}-${{ steps.build.outputs.version }}
+          path: |
+            ${{ runner.temp }}/dist/*.zip
+            ${{ runner.temp }}/dist/*.sha256.txt
+            ${{ runner.temp }}/dist/RELEASE_NOTES.md
+
+      - name: Publish GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ZIP: ${{ steps.build.outputs.zip }}
+          SUMS: ${{ steps.build.outputs.sums }}
+          ID: ${{ steps.build.outputs.id }}
+          VERSION: ${{ steps.build.outputs.version }}
+          NOTES: ${{ runner.temp }}/dist/RELEASE_NOTES.md
+        run: |
+          prerelease=""
+          if [[ "$VERSION" == *-* ]]; then prerelease="--prerelease"; fi
+          gh release create "$GITHUB_REF_NAME" "$ZIP" "$SUMS" --repo "$GITHUB_REPOSITORY" \
+            --verify-tag --title "$ID $VERSION" --notes-file "$NOTES" $prerelease

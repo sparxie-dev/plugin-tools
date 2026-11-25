@@ -1,0 +1,6 @@
+build/
+dist/
+.plugin-tools/
+.vs/
+.vscode/
+__pycache__/
