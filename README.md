@@ -45,6 +45,6 @@ python .plugin-tools/scripts/build_plugin.py --repo .
 ## 维护约定
 
 - `v1` 是浮动 tag，指向最新的 `v1.x.y`；`v1` 系列只做向后兼容的修复，破坏性改动发 `v2`。想完全锁定的调用方可以换成提交 sha。
-- 本仓库需开启 `v*` tag 保护。工作流保持 `persist-credentials: false`，并按 `job.workflow_sha` 检出自身，保证脚本和工作流是同一个提交。
+- 本仓库对 `v*.*.*` tag 开启保护（禁止删除和修改），浮动的 `v1` 不受限，发修复版本时移动它。工作流保持 `persist-credentials: false`，并按 `job.workflow_sha` 检出自身，保证脚本和工作流是同一个提交。
 - `scripts/manifest_utils.py` 的校验规则对齐 Sparxie 主程序的 `PluginManifest` / `PluginSettingsSchema`。**主程序是最终裁判**：主程序改规则时要同步改这里。
 - `tests/sample_plugin_repo` 是回归用的最小插件，CI 会完整构建打包它。
