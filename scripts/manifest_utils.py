@@ -21,7 +21,7 @@ FIELD_KEY_PATTERN = re.compile(r"[A-Za-z][A-Za-z0-9_]{0,39}")
 # 主程序只接受不带构建元数据的版本号用于升级/降级判断；发布 tag 为 v<version>
 VERSION_PATTERN = re.compile(r"\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?")
 
-CAP_BITS = {"createsProcess": 1, "injects": 2, "needsArgs": 4, "hotParams": 8}
+CAP_BITS = {"createsProcess": 1, "injects": 2, "needsArgs": 4, "hotParams": 8, "disableTouchUi": 16}
 FORBIDDEN_EXE_NAMES = {
     "explorer.exe", "svchost.exe", "cmd.exe", "powershell.exe", "pwsh.exe", "rundll32.exe", "conhost.exe",
     "wininit.exe", "services.exe", "lsass.exe", "csrss.exe", "winlogon.exe", "taskmgr.exe", "regedit.exe",

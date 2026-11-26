@@ -73,6 +73,13 @@ class ManifestTests(unittest.TestCase):
         good = {"abiMajor": 1, "id": GOOD["id"], "version": GOOD["version"], "caps": 1, "exeNames": ["demo.EXE"]}
         self.assertEqual([], cross_check(GOOD, good))
 
+    def test_disable_touch_ui_cap_is_accepted_and_mapped_to_bit_16(self):
+        manifest = copy.deepcopy(GOOD)
+        manifest["caps"] = ["createsProcess", "disableTouchUi"]
+        self.assertEqual([], validate_manifest(manifest))
+        info = {"abiMajor": 1, "id": manifest["id"], "version": manifest["version"], "caps": 17, "exeNames": ["Demo.exe"]}
+        self.assertEqual([], cross_check(manifest, info))
+
     def test_zip_layout(self):
         with tempfile.TemporaryDirectory() as temp:
             for layout, ok in (("ext.acme.demo/", True), ("wrong/", False), ("", False)):
